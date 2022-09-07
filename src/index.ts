@@ -1,29 +1,59 @@
-import { Experiences } from "./helpers/create-experiences";
 import puppeteer from "puppeteer";
-import randomUseragent from "random-useragent";
+import { About } from "./helpers/create-about";
+import { Experiences } from "./helpers/create-experiences";
+import { EducationalBackground } from "./helpers/create-educational-background";
+import { Languages } from "./helpers/create-languages";
 import { IAllInformations } from "interfaces/all-informations.interface";
+import { IGetInfoDTO } from "./dtos/get-info.dto";
+import { validateProfileUrl } from "./validations/profile-url.validation";
 
-// yandex russia proxy to bypass Linkedin Authwall
-// vulnerability discovered by 300guy
-const url =
-  "https://translated.turbopages.org/proxy_u/en-ru.en.f3d66897-6313eefb-0fa2b576-74722d776562/https/br.linkedin.com/in/rodrigo-goncalves-santana";
+export class LinkedinXray {
+  private profileInfo!: IAllInformations;
 
-(async () => {
-  const browser = await puppeteer.launch({
-    headless: false,
-    ignoreDefaultArgs: ["--enable-automation"],
-    product: "chrome",
-  });
-  const context = await browser.createIncognitoBrowserContext();
-  const page = await context.newPage();
-  const userAgent = randomUseragent.getRandom();
-  await page.setUserAgent(userAgent);
-  await page.goto(url);
-  const html = await page.content();
-  await browser.close();
-  const experiences = new Experiences(html).create();
-  const allInfos: IAllInformations = {
-    experiences,
-  };
-  console.log(JSON.stringify(allInfos, null, 2));
-})();
+  private prepareUrl(profileUrl: string): string {
+    const validatedUrl = validateProfileUrl(profileUrl);
+    const protocol = "https://";
+    const formatedUrl = protocol.concat(
+      new URL(validatedUrl).host.concat(new URL(validatedUrl).pathname)
+    );
+    return formatedUrl;
+  }
+
+  async getInfo({ profileUrl }: IGetInfoDTO): Promise<IAllInformations> {
+    const url = this.prepareUrl(profileUrl);
+    // vulnerability discovered by 300guy
+    // it is possible to view the page only once, from a google search
+    const googleUrl = `https://www.google.com/url?q=${url}`;
+    const browser = await puppeteer.launch({
+      headless: true,
+      ignoreDefaultArgs: ["--enable-automation"],
+      product: "firefox",
+      args: ["--no-sandbox"],
+    });
+    const [page] = await browser.pages();
+    page.on("response", (r) => {
+      if (r.request().resourceType() === "document")
+        if (r.status() == 404) {
+          throw new Error("Could not find this user");
+        }
+    });
+    await page.goto(googleUrl, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("div > a");
+    await page.click("div > a");
+    await page.waitForNavigation();
+    const html = await page.content();
+    await browser.close();
+    const about = new About(html).create();
+    const experiences = new Experiences(html).create();
+    const educationalBackground = new EducationalBackground(html).create();
+    const languages = new Languages(html).create();
+    this.profileInfo = {
+      about,
+      experiences,
+      educationalBackground,
+      languages,
+    };
+
+    return this.profileInfo;
+  }
+}

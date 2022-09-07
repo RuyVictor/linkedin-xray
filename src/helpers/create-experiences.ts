@@ -2,8 +2,8 @@ import jsdom from "jsdom";
 import { IExperience } from "interfaces/experience.interface";
 
 export class Experiences {
-  experiences: IExperience[] = [];
-  document: Document;
+  private experiences: IExperience[] = [];
+  private document: Document;
 
   constructor(html: string) {
     this.document = new jsdom.JSDOM(html).window.document;
@@ -21,6 +21,8 @@ export class Experiences {
 
       if (!isGroupOfExperiences) {
         const company = item.querySelector(".profile-section-card__subtitle")!;
+
+        const location = item.querySelector(".experience-item__location")!;
 
         const startDate = item.querySelector(
           ".experience-item__duration .date-range time:nth-child(1)"
@@ -44,13 +46,14 @@ export class Experiences {
           company: company.textContent!.trim(),
           timeline: [
             {
+              location: location?.textContent?.trim(),
               position: position.textContent!.trim(),
               dateRange: {
                 startDate: startDate.textContent!.trim(),
                 endDate: endDate?.textContent?.trim() || "the moment",
                 duration: duration.textContent!.trim(),
               },
-              description: description.textContent!.trim(),
+              description: description?.textContent?.trim(),
             },
           ],
         });
@@ -58,6 +61,10 @@ export class Experiences {
         const company = item.querySelector(
           ".experience-group-header__company"
         )!;
+
+        const nodeLocations = Array.from(
+          item.querySelectorAll(".experience-group-position__location")
+        );
 
         const nodeStartDates = Array.from(
           item.querySelectorAll(
@@ -85,6 +92,10 @@ export class Experiences {
           item.querySelectorAll(".show-more-less-text__text--less")
         );
 
+        const locations = nodeLocations.map((item) =>
+          item?.textContent?.trim()
+        );
+
         const startDates = nodeStartDates.map((item) =>
           item.textContent?.trim()
         );
@@ -94,17 +105,18 @@ export class Experiences {
         const durations = nodeDurations.map((item) => item.textContent?.trim());
         const positions = nodePositions.map((item) => item.textContent?.trim());
         const descriptions = nodeDescriptions.map((item) =>
-          item.textContent?.trim()
+          item?.textContent?.trim()
         );
 
         const timeline = nodePositions.map((item, index) => ({
           position: positions[index]!,
+          location: locations[index],
           dateRange: {
             startDate: startDates[index]!,
             endDate: endDates[index]!,
             duration: durations[index]!,
           },
-          description: descriptions[index]!,
+          description: descriptions[index],
         }));
 
         this.experiences.push({
