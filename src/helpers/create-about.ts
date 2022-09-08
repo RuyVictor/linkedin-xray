@@ -20,10 +20,9 @@ export class About {
 
     const location = this.document.querySelector(
       ".top-card__subline-item:nth-child(1)"
-    );
+    )!;
 
-    const [city, state, country] =
-      location?.textContent?.trim().split(", ")! ?? [];
+    const [city, state, country] = location?.textContent?.trim().split(", ")!;
 
     this.about = {
       name: name.textContent?.trim()!,

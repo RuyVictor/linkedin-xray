@@ -8,17 +8,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LinkedinXray = void 0;
-const puppeteer_1 = __importDefault(require("puppeteer"));
 const create_about_1 = require("./helpers/create-about");
 const create_experiences_1 = require("./helpers/create-experiences");
 const create_educational_background_1 = require("./helpers/create-educational-background");
 const create_languages_1 = require("./helpers/create-languages");
 const profile_url_validation_1 = require("./validations/profile-url.validation");
+const browser_handler_1 = require("./browser-handler");
 class LinkedinXray {
     prepareUrl(profileUrl) {
         const validatedUrl = (0, profile_url_validation_1.validateProfileUrl)(profileUrl);
@@ -32,12 +29,7 @@ class LinkedinXray {
             // vulnerability discovered by 300guy
             // it is possible to view the page only once, from a google search
             const googleUrl = `https://www.google.com/url?q=${url}`;
-            const browser = yield puppeteer_1.default.launch({
-                headless: true,
-                ignoreDefaultArgs: ["--enable-automation"],
-                product: "firefox",
-                args: ["--no-sandbox"],
-            });
+            const browser = yield browser_handler_1.BrowserHandler.handle();
             const [page] = yield browser.pages();
             page.on("response", (r) => {
                 if (r.request().resourceType() === "document")
@@ -48,9 +40,11 @@ class LinkedinXray {
             yield page.goto(googleUrl, { waitUntil: "domcontentloaded" });
             yield page.waitForSelector("div > a");
             yield page.click("div > a");
-            yield page.waitForNavigation();
+            yield page.waitForNavigation({ waitUntil: "domcontentloaded" });
             const html = yield page.content();
-            yield browser.close();
+            if (html.includes("authwall")) {
+                return yield this.getInfo({ profileUrl: url }); //bypass authwall recursively
+            }
             const about = new create_about_1.About(html).create();
             const experiences = new create_experiences_1.Experiences(html).create();
             const educationalBackground = new create_educational_background_1.EducationalBackground(html).create();
@@ -61,6 +55,7 @@ class LinkedinXray {
                 educationalBackground,
                 languages,
             };
+            yield browser.close();
             return this.profileInfo;
         });
     }
