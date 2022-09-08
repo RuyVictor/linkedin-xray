@@ -66,9 +66,3 @@ class LinkedinXray {
     }
 }
 exports.LinkedinXray = LinkedinXray;
-const linkedin = new LinkedinXray();
-(() => __awaiter(void 0, void 0, void 0, function* () {
-    const profileUrl = "https://www.linkedin.com/in/ruy-victor-451923184/";
-    const result = yield linkedin.getInfo({ profileUrl });
-    console.log(result);
-}))();
