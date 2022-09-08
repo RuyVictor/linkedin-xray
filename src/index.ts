@@ -57,3 +57,12 @@ export class LinkedinXray {
     return this.profileInfo;
   }
 }
+
+const linkedin = new LinkedinXray();
+
+(async () => {
+  const profileUrl = "https://www.linkedin.com/in/ruy-victor-451923184/";
+  const result = await linkedin.getInfo({ profileUrl });
+
+  console.log(result);
+})();
